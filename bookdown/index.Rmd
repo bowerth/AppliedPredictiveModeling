@@ -1,0 +1,21 @@
+--- 
+title: "The `AppliedPredictiveModeling` Package"
+author: "Bo Werth"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+output: 
+  bookdown::gitbook:
+    config:
+      toc:
+        collapse: section
+documentclass: book
+github-repo: https://github.com/bowerth/AppliedPredictiveModeling
+description: "Documentation for the `AppliedPredictiveModeling` package"
+split_by: chapter
+---
+
+# Introduction
+
+Creating a gitbook from the R code files in `inst/chapter` folder.
+
+These HTML pages were created using [bookdown](https://bookdown.org). 

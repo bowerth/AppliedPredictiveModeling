@@ -1,0 +1,93 @@
+# A Short Tour of the Predictive Modeling Process
+
+```{r tour_startup,echo=FALSE,message=FALSE,warning=FALSE}
+library(knitr)
+opts_chunk$set(digits = 3, tidy = FALSE, fig.path = '02-A-Short-Tour/')
+library(AppliedPredictiveModeling)
+library(caret)
+library(earth)
+library(lattice)
+```
+
+## Case Study: Predicting Fuel Economy
+
+### Format data for plotting against engine displacement
+
+- Sort by engine displacement
+- Combine data into one data frame
+
+```{r fuel_format, echo=FALSE}
+data(FuelEconomy)
+cars2010 <- cars2010[order(cars2010$EngDispl),]
+cars2011 <- cars2011[order(cars2011$EngDispl),]
+cars2010a <- cars2010
+cars2010a$Year <- "2010 Model Year"
+cars2011a <- cars2011
+cars2011a$Year <- "2011 Model Year"
+plotData <- rbind(cars2010a, cars2011a)
+```
+
+```{r fuel_plot, fig.width=6.5, fig.height=6.5, tidy=FALSE, message=FALSE, warning=FALSE}
+xyplot(FE ~ EngDispl|Year, plotData,
+       xlab = "Engine Displacement",
+       ylab = "Fuel Efficiency (MPG)",
+       between = list(x = 1.2))
+```
+
+### Fit a single linear model and conduct 10-fold CV to estimate the error
+
+```{r linear, fig.width=6.5, fig.height=6.5, tidy=FALSE, message=FALSE, warning=FALSE}
+set.seed(1)
+lm1Fit <- train(FE ~ EngDispl, 
+                data = cars2010,
+                method = "lm", 
+                trControl = trainControl(method= "cv"))
+lm1Fit
+```
+
+### Fit a quadratic model too
+
+```{r square, fig.width=6.5, fig.height=6.5, tidy=FALSE, message=FALSE, warning=FALSE}
+## Create squared terms
+cars2010$ED2 <- cars2010$EngDispl^2
+cars2011$ED2 <- cars2011$EngDispl^2
+
+set.seed(1)
+lm2Fit <- train(FE ~ EngDispl + ED2, 
+                data = cars2010,
+                method = "lm", 
+                trControl = trainControl(method= "cv"))
+lm2Fit
+```
+
+### Finally a MARS model (via the earth package)
+
+```{r mars, fig.width=6.5, fig.height=6.5, tidy=FALSE, message=FALSE, warning=FALSE}
+set.seed(1)
+marsFit <- train(FE ~ EngDispl, 
+                 data = cars2010,
+                 method = "earth",
+                 tuneLength = 15,
+                 trControl = trainControl(method= "cv"))
+marsFit
+
+plot(marsFit)
+```
+
+## Predict and Performance
+
+Predict the test set data
+
+```{r predict, tidy=FALSE, message=FALSE, warning=FALSE}
+cars2011$lm1  <- predict(lm1Fit,  cars2011)
+cars2011$lm2  <- predict(lm2Fit,  cars2011)
+cars2011$mars <- predict(marsFit, cars2011)
+```
+
+Get test set performance values via caret's `postResample` function
+
+```{r performance, tidy=FALSE, message=FALSE, warning=FALSE}
+postResample(pred = cars2011$lm1,  obs = cars2011$FE)
+postResample(pred = cars2011$lm2,  obs = cars2011$FE)
+postResample(pred = cars2011$mars, obs = cars2011$FE)
+```
