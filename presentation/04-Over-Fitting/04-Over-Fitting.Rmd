@@ -19,34 +19,25 @@ class: inverse, center, middle
 options(htmltools.dir.version = FALSE)
 ```
 
-```{r tour_startup,echo=FALSE,message=FALSE,warning=FALSE}
+```{r tour_startup, echo=FALSE, message=FALSE, warning=FALSE}
 library(knitr)
 opts_chunk$set(digits = 3, tidy = FALSE, fig.path = '03-Data-Pre-Processing/')
 library(AppliedPredictiveModeling)
 library(caret)
-library(e1071)
-library(ellipse)
-library(corrplot)
+library(kernlab)
+library(doMC)
+registerDoMC(4)
 ```
 
 ---
 
 ## German Credit Data
 
+- remove near-zero variance predictors
+- get rid of a few predictors that duplicate values, e.g. housing variable: "Rent", "Own" and "ForFree". So that we don't have linear dependencies, we get rid of one of the levels (e.g. "ForFree")
+
 ```{r credit_data}
 data(GermanCredit)
-```
-
----
-
-```{r, echo=FALSE, eval=FALSE}
-
-
-## First, remove near-zero variance predictors then get rid of a few predictors 
-## that duplicate values. For example, there are two possible values for the 
-## housing variable: "Rent", "Own" and "ForFree". So that we don't have linear
-## dependencies, we get rid of one of the levels (e.g. "ForFree")
-
 GermanCredit <- GermanCredit[, -nearZeroVar(GermanCredit)]
 GermanCredit$CheckingAccountStatus.lt.0 <- NULL
 GermanCredit$SavingsAccountBonds.lt.100 <- NULL
@@ -55,37 +46,51 @@ GermanCredit$EmploymentDuration.Unemployed <- NULL
 GermanCredit$Personal.Male.Married.Widowed <- NULL
 GermanCredit$Property.Unknown <- NULL
 GermanCredit$Housing.ForFree <- NULL
+```
+---
 
-## Split the data into training (80%) and test sets (20%)
+## German Credit Data
+
+- split the data into training (80%) and test sets (20%)
+
+```{r credit_data_split}
 set.seed(100)
 inTrain <- createDataPartition(GermanCredit$Class, p = .8)[[1]]
 GermanCreditTrain <- GermanCredit[ inTrain, ]
 GermanCreditTest  <- GermanCredit[-inTrain, ]
+```
+---
 
-## The model fitting code shown in the computing section is fairly
-## simplistic.  For the text we estimate the tuning parameter grid
-## up-front and pass it in explicitly. This generally is not needed,
-## but was used here so that we could trim the cost values to a
-## presentable range and to re-use later with different resampling
-## methods.
+## German Credit Data
 
-library(kernlab)
+The model fitting code shown in the computing section is fairly
+simplistic. For the text we estimate the tuning parameter grid
+up-front and pass it in explicitly. This generally is not needed,
+but was used here so that we could trim the cost values to a
+presentable range and to re-use later with different resampling
+methods.
+
+```{r credit_compute}
 set.seed(231)
 sigDist <- sigest(Class ~ ., data = GermanCreditTrain, frac = 1)
-svmTuneGrid <- data.frame(sigma = as.vector(sigDist)[1], C = 2^(-2:7))
+svmTuneGrid <- 
+  data.frame(sigma = as.vector(sigDist)[1], C = 2^(-2:7))
+```
 
-### Optional: parallel processing can be used via the 'do' packages,
-### such as doMC, doMPI etc. We used doMC (not on Windows) to speed
-### up the computations.
+---
 
-### WARNING: Be aware of how much memory is needed to parallel
-### process. It can very quickly overwhelm the available hardware. We
-### estimate the memory usage (VSIZE = total memory size) to be 
-### 2566M/core.
+## German Credit Data
 
-library(doMC)
-registerDoMC(4)
+Optional: parallel processing can be used via the 'do' packages,
+such as doMC, doMPI etc. We used doMC (not on Windows) to speed
+up the computations.
 
+WARNING: Be aware of how much memory is needed to parallel
+process. It can very quickly overwhelm the available hardware. We
+estimate the memory usage (VSIZE = total memory size) to be 
+2566M/core.
+
+```{r credit_par, cache=TRUE}
 set.seed(1056)
 svmFit <- train(Class ~ .,
                 data = GermanCreditTrain,
@@ -96,9 +101,15 @@ svmFit <- train(Class ~ .,
                                          repeats = 5,
                                          classProbs = TRUE))
 ## classProbs = TRUE was added since the text was written
+```
+---
 
-## Print the results
+```{r credit_result, echo=FALSE}
 svmFit
+```
+
+```{r, echo=FALSE, eval=FALSE}
+
 
 ## A line plot of the average performance. The 'scales' argument is actually an 
 ## argument to xyplot that converts the x-axis to log-2 units.
